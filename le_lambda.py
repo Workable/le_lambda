@@ -8,7 +8,6 @@ import ssl
 import re
 import urllib
 import csv
-import zlib
 import json
 import certifi
 import os
@@ -199,6 +198,7 @@ def create_socket():
     except socket.error, exc:
         logger.error('Exception socket.error : {}'.format(exc))
         raise SystemExit
+
 
 def validate_uuid(uuid_string):
     try:
