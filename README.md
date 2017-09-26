@@ -9,6 +9,7 @@ Before deploying as a ZIP file, the additional top level requirements must be in
 
 ```
 pip install -r top-level-requirements.txt -t .
+zip -r le_lambda.zip le_lambda.py jmespath certifi lib
 ```
 
 ## Development
@@ -72,7 +73,7 @@ py.test -sv tests/
   | Key | Value|
   |------|------|
   | `TRANSFORMER_CLASS_LIST` | Comma-separated list of transformer classes. |
-  | `TRANSFORMER_S3_KEY_FIELD_EXTRACTOR_MAPPING` | JSON-encoded field value mapping for the S3 path components enrichment: `[{"field": "my_field_1", "value": "key[0]"]`|
+  | `TRANSFORMER_S3_KEY_FIELD_EXTRACTOR_MAPPING` | JSON-encoded field value mapping for the S3 path components enrichment: `[{"field": "my_field_1", "value": "key[0]"}]`|
 
   Example:
   - By defining `TRANSFORMER_CLASS_LIST=URLParserTransformer,KeyValuePairFormatTransformer`, the `url` field of Application Load Balancer log will be expanded to its components:
@@ -102,7 +103,7 @@ py.test -sv tests/
   }]
   ```
 
-  For example, defining `{"field": "my_field", "value": "key[1]"'}` and the S3 key is: `/prefix1/prefix2/AWSLogs/`
+  For example, for the new field definition `{"field": "my_field", "value": "key[1]"}` and the event S3 key: `/prefix1/prefix2/AWSLogs/`
   will result in adding the field: `my_field="prefix2"` in the log record.
 
 

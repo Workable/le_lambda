@@ -116,8 +116,10 @@ def lambda_handler(event, context):
                             'elb_id': line[2],
                             'client_ip': line[3].split(':')[0],
                             'client_port': line[3].split(':')[1],
-                            'target_ip': line[4].split(':')[0],
-                            'target_port': line[4].split(':')[1],
+                            'target_ip': line[4].split(':')[0]
+                            if line[4] != '-' else '-',
+                            'target_port': line[4].split(':')[1]
+                            if line[4] != '-' else '-',
                             'request_processing_time': line[5],
                             'target_processing_time': line[6],
                             'response_processing_time': line[7],
@@ -127,7 +129,7 @@ def lambda_handler(event, context):
                             'sent_bytes': line[11],
                             'method': request[0],
                             'url': url,
-                            'http_version' :request[2],
+                            'http_version': request[2],
                             'user_agent': line[13],
                             'ssl_cipher': line[14],
                             'ssl_protocol': line[15],
