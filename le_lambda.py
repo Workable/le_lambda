@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import gzip
 import logging
 import tempfile
@@ -8,11 +9,12 @@ import ssl
 import re
 import urllib
 import csv
-import zlib
 import json
 import certifi
 import os
 from uuid import UUID
+
+from lib.transformations import TransformationPipeline
 
 
 logger = logging.getLogger()
@@ -26,6 +28,8 @@ REGION = os.environ.get('region')
 ENDPOINT = '{}.data.logs.insight.rapid7.com'.format(REGION)
 PORT = 20000
 TOKEN = os.environ.get('token')
+TRANSFORMERS = \
+    os.environ.get('TRANSFORMER_CLASS_LIST', 'JSONTransformer').split(',')
 
 
 def lambda_handler(event, context):
@@ -55,6 +59,12 @@ def lambda_handler(event, context):
             lines = data.split("\n")
             logger.info('Total number of lines: {}'.format(len(list(lines))))
 
+            if validate_elb_log(str(key)) or validate_alb_log(str(key)):
+                transformation_pipeline = \
+                    TransformationPipeline.build_from_names(TRANSFORMERS)
+            else:
+                transformation_pipeline = None
+
             if validate_elb_log(str(key)) is True:
                 # timestamp elb client:port backend:port request_processing_time backend_processing_time
                 # response_processing_time elb_status_code backend_status_code received_bytes sent_bytes
@@ -83,7 +93,10 @@ def lambda_handler(event, context):
                         'ssl_cipher': line[13],
                         'ssl_protocol': line[14]
                     }
-                    msg = json.dumps(parsed)
+                    msg = transformation_pipeline.apply(
+                        event=event,
+                        parsed=parsed
+                    )
                     sock.sendall('{} {}\n'.format(TOKEN, msg))
                 logger.info('Finished sending file={} to R7'.format(key))
             elif validate_alb_log(str(key)) is True:
@@ -103,8 +116,10 @@ def lambda_handler(event, context):
                             'elb_id': line[2],
                             'client_ip': line[3].split(':')[0],
                             'client_port': line[3].split(':')[1],
-                            'target_ip': line[4].split(':')[0],
-                            'target_port': line[4].split(':')[1],
+                            'target_ip': line[4].split(':')[0]
+                            if line[4] != '-' else '-',
+                            'target_port': line[4].split(':')[1]
+                            if line[4] != '-' else '-',
                             'request_processing_time': line[5],
                             'target_processing_time': line[6],
                             'response_processing_time': line[7],
@@ -114,14 +129,17 @@ def lambda_handler(event, context):
                             'sent_bytes': line[11],
                             'method': request[0],
                             'url': url,
-                            'http_version' :request[2],
+                            'http_version': request[2],
                             'user_agent': line[13],
                             'ssl_cipher': line[14],
                             'ssl_protocol': line[15],
                             'target_group_arn': line[16],
                             'trace_id': line[17]
                         }
-                        msg = json.dumps(parsed)
+                        msg = transformation_pipeline.apply(
+                            event=event,
+                            parsed=parsed
+                        )
                         sock.sendall('{} {}\n'.format(TOKEN, msg))
                         good_run_count += 1
                     except IndexError:
@@ -199,6 +217,7 @@ def create_socket():
     except socket.error, exc:
         logger.error('Exception socket.error : {}'.format(exc))
         raise SystemExit
+
 
 def validate_uuid(uuid_string):
     try:
